@@ -1,19 +1,4 @@
-Source() -> rr1::Roundrobin(gates=3)
+Source() -> rr1::Mirror(gates=2)
 sink1::Sink()
 rr1:0 -> sink1
 rr1:1 -> sink1
-rr1:2 -> sink1
-
-
-# round robin for gate 0 and 2 (skipping 1), on a per-packet basis
-Source() -> rr2::Roundrobin(gates=[0, 2], mode='packet')
-sink2::Sink()
-rr2:0 -> sink2
-rr2:1 -> sink2
-rr2:2 -> sink2
-
-
-# demo
-src0::Source() -> rr::Roundrobin(gates=2)
-rr:0 -> 0:d::Bypass():0 -> dst1::Sink()
-rr:1 -> 1:e::Bypass():1 -> dst2::Sink()

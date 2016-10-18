@@ -235,9 +235,9 @@ def build_kmod():
         raise
 
 def build_all():
-    #setup_dpdk()
+    setup_dpdk()
     build_bess()
-    #build_kmod()
+    build_kmod()
 
 def do_clean():
     print 'Cleaning up...'
