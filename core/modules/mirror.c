@@ -20,6 +20,7 @@ command_set_mode(struct module *m, const char *cmd, struct snobj *arg)
 	if (!mode)
 		return snobj_err(EINVAL, "argument must be a string");
 
+	//per packet model does not support
 	if (strcmp(mode, "packet") == 0)
 		priv->per_packet = 1;
 	else if (strcmp(mode, "batch") == 0)
@@ -101,13 +102,15 @@ mirror_process_batch(struct module *m, struct pkt_batch *batch)
 {
 	struct mirror_priv* priv = get_priv(m);
 	//gate_idx_t ogates[MAX_PKT_BURST];
-	//struct pkt_batch batchCopy;
-	//batch_copy(&batchCopy, batch);
 
-	for (int i = 0; i< priv->ngates; i++)
+	for (int i = 0; i < priv->ngates; i++)
 	{
-		run_choose_module(m, i, batch);
+		struct pkt_batch batchCopy;
+		batch_copy(&batchCopy, batch);
+		
+		run_choose_module(m, i, &batchCopy);
 	}
+	snb_free_bulk(batch->pkts, batch->cnt);
 }
 
 static const struct mclass mirror = {
