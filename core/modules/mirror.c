@@ -102,8 +102,7 @@ mirror_process_batch(struct module *m, struct pkt_batch *batch)
 {
 	struct mirror_priv* priv = get_priv(m);
 
-	for (int i = 0; i < priv->ngates; i++)
-	{
+	for (int i = 0; i < priv->ngates; i++) {
 		struct pkt_batch batchCopy;
 		batch_copy(&batchCopy, batch);
 		
