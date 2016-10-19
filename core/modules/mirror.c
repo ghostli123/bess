@@ -101,7 +101,6 @@ static void
 mirror_process_batch(struct module *m, struct pkt_batch *batch)
 {
 	struct mirror_priv* priv = get_priv(m);
-	//gate_idx_t ogates[MAX_PKT_BURST];
 
 	for (int i = 0; i < priv->ngates; i++)
 	{
@@ -110,6 +109,7 @@ mirror_process_batch(struct module *m, struct pkt_batch *batch)
 		
 		run_choose_module(m, i, &batchCopy);
 	}
+
 	snb_free_bulk(batch->pkts, batch->cnt);
 }
 
