@@ -11,6 +11,7 @@ timestamp_packet(struct snbuf* pkt, uint64_t time)
 		sizeof(struct tcp_hdr);
 	*avail = 1;
 	uint64_t *ts = (uint64_t*)(avail + 1);
+	//*ts = 2;
 	*ts = time;
 }
 
@@ -19,9 +20,11 @@ timestamp_process_batch(struct module *m, struct pkt_batch *batch)
 {
 	uint64_t time = get_time();
 
-	for (int i = 0; i < batch->cnt; i++)
+	//FILE *f = fopen("/home/yang/bessfile2.txt", "w");
+	for (int i = 0; i < batch->cnt; i++) {
 		timestamp_packet(batch->pkts[i], time);
-
+		//snb_dump(f, batch->pkts[i]);
+	}
 	run_next_module(m, batch);
 }
 

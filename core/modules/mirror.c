@@ -114,7 +114,7 @@ mirror_process_batch(struct module *m, struct pkt_batch *batch)
 
 static const struct mclass mirror = {
 	.name 		= "Mirror",
-	.help		= "mirror packets to all output gate",
+	.help		= "mirror packets to all output gates",
 	.num_igates	= 1,
 	.num_ogates	= MAX_GATES,
 	.priv_size	= sizeof(struct mirror_priv),
