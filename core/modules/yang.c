@@ -140,7 +140,25 @@ command_set_gates(struct module *m, const char *cmd, struct snobj *arg)
 static void delete_entry(struct yang_priv *priv,
 			 int index)
 {
+	printf("going to delete\n");
 	//delete
+	if (priv->num_entries == 0)
+		return;
+	printf("del_entry: index %d\n", index);
+  
+	/*priv->entry[priv->num_entries].in_ip    = in_ip;
+	priv->entry[priv->num_entries].out_ip   = out_ip;
+	priv->entry[priv->num_entries].in_port  = in_port;
+	priv->entry[priv->num_entries].out_port = out_port;
+	priv->entry[priv->num_entries].nat_port = htons(NAT_START_PORT +
+							priv->num_entries);*/
+	priv->entry[index].ipid = 0;
+	priv->entry[index].count = 0;
+	snb_free(priv->entry[index].pkt);
+	priv->entry[index].pkt = 0;
+	
+	//priv->num_entries--;
+	//return priv->num_entries - 1;
 }
 
 static int add_entry(struct yang_priv *priv,
@@ -154,7 +172,7 @@ static int add_entry(struct yang_priv *priv,
 {
 	if (priv->num_entries == MAX_MAP_ENTRIES)
 		return -1;
-	printf("add_entry: ipid %d", ipid);
+	//printf("add_entry: ipid %d\n", ipid);
   
 	/*priv->entry[priv->num_entries].in_ip    = in_ip;
 	priv->entry[priv->num_entries].out_ip   = out_ip;
@@ -210,7 +228,7 @@ static int find_matching_entry(struct yang_priv *priv,
 	struct yang_mapping_entry *entry;
 	for(int i=0; i<priv->num_entries; i++) {
 		entry = &(priv->entry[i]);
-		printf("direction %d", direction);
+		//printf("direction %d", direction);
 		if (direction == CLIENT) {
 		  if (outbound_flow_match(entry,
 					  ipid
@@ -276,23 +294,20 @@ static void yang_process_batch(struct module *m,
 	for (int i = 0; i < batch->cnt; i++) {
 		direction[i] = get_igate();
 
-		printf("process batch, igate: %d\n", direction[i]);
+		//printf("process batch, igate: %d\n", direction[i]);
 
 		eth = (struct ether_hdr *)snb_head_data(batch->pkts[i]);
 
-		printf("start1 %d, %d\n", eth->ether_type, priv->ether_type_ipv4);
-		/*if ( eth->ether_type != priv->ether_type_ipv4 ) {
-			direction[i] = SERIAL_OGATE;
-			continue;
-		}*/
-		printf("start2\n");
+		//printf("start1 %d, %d\n", eth->ether_type, priv->ether_type_ipv4);
+
+		//printf("start2\n");
 
 		ip = (struct ipv4_hdr *)(eth + 1);
 		ipid = ip->packet_id;
 		pkt = snb_copy(batch->pkts[i]);
 		
 		int ind = -1;
-		printf("start3 ipid %d \n", ipid);
+		//printf("start3 ipid %d \n", ipid);
 		if (direction[i] == CLIENT) {
 			//if the direction is going to VNF
 			//add sequence number into table as tag 
@@ -303,7 +318,7 @@ static void yang_process_batch(struct module *m,
 					    	  direction[i],
 					    	  ipid);
 
-			printf("process batch, index: %d\n", ind);
+			//printf("process batch, index: %d\n", ind);
 			// add entry if none exists
 			if (ind < 0)
 			{

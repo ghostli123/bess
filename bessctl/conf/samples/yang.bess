@@ -17,27 +17,42 @@ Si = Si::PortInc(port=S)
 So = So::PortOut(port=S)
 Di = Di::PortInc(port=D)
 Do = Do::PortOut(port=D)
-#A1i = A1i::PortInc(port=A1)
 A1o = A1o::PortOut(port=A1)
 A2i = A2i::PortInc(port=A2)
-#A2o = A2o::PortOut(port=A2)
-#B1i = B1i::PortInc(port=B1)
 B1o = B1o::PortOut(port=B1)
 B2i = B2i::PortInc(port=B2)
-#B2o = B2o::PortOut(port=B2)
+
+B2o = B2o::PortOut(port=B2)
+A1i = A1i::PortInc(port=A1)
+A2o = A2o::PortOut(port=A2)
+B1i = B1i::PortInc(port=B1)
 
 y::YANG(gates=3)
+#Si -> 0:y:0 -> A1o
+Si -> 0:y:0 -> A1o
+#Si -> A1o
+A2i -> Do
+#B2i -> Do
+#Di -> So
+Di -> A2o
+#B1i -> A2o
+A1i -> So
+#y::YANG(gates=3)
+#
+#Si -> 0:y:0 -> m::Mirror(gates=2)
+##Si -> 0:y:0 -> A1o
+#m:0 -> A1o
+#m:1 -> B1o
 
-Si -> 0:y:0 -> m::Mirror(gates=2)
-m:0 -> A1o
-m:1 -> B1o
 
-A2i -> 1:y
-B2i -> 2:y
-y:1 -> Dump()
-y:2 -> Do
+#A2i -> 1:y
+#B2i -> 2:y
+#y:1 -> Sink()
+#y:2 -> Do
+#
+#Di -> So
 
-Di -> So
+
 #A2i -> Do
 #Di -> A2o
 #A1i -> So
