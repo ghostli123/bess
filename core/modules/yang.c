@@ -147,11 +147,11 @@ command_set_gates(struct module *m, const char *cmd, struct snobj *arg)
 static void delete_entry(struct yang_priv *priv,
 			 int index)
 {
-	printf("going to delete\n");
+	//printf("going to delete\n");
 	//delete
 	if (priv->num_entries == 0)
 		return;
-	printf("del_entry: index %d\n", index);
+	//printf("del_entry: index %d\n", index);
   
 	/*priv->entry[priv->num_entries].in_ip    = in_ip;
 	priv->entry[priv->num_entries].out_ip   = out_ip;
@@ -331,7 +331,7 @@ static void yang_process_batch(struct module *m,
 		pkt = snb_copy(batch->pkts[i]);
 		
 		int ind = -1;
-		printf("start3 ipid %d \n", ipid);
+		//printf("start3 ipid %d \n", ipid);
 		if (direction[i] == IGATE_CLIENT) {
 			//if the direction is going to VNF
 			//add sequence number into table as tag 
@@ -342,7 +342,7 @@ static void yang_process_batch(struct module *m,
 					    	  direction[i],
 					    	  ipid);
 
-			printf("process batch, index: %d\n", ind);
+			//printf("process batch, index: %d\n", ind);
 			// add entry if none exists
 			if (ind < 0)
 			{
@@ -436,7 +436,7 @@ static void yang_process_batch(struct module *m,
 					    	  direction[i],
 					    	  ipid);
 
-			printf("process batch, index: %d\n", ind);
+			//printf("process batch, index: %d\n", ind);
 			// add entry if none exists
 			if (ind < 0)
 			{
