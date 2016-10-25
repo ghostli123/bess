@@ -100,16 +100,28 @@ static struct snobj *mirror_init(struct module *m, struct snobj *arg)
 static void
 mirror_process_batch(struct module *m, struct pkt_batch *batch)
 {
-	struct mirror_priv* priv = get_priv(m);
+	//struct mirror_priv* priv = get_priv(m);
 
-	for (int i = 0; i < priv->ngates; i++) {
+	struct pkt_batch batchCopy;
+	batch_clear(&batchCopy);
+
+	for (int i = 0; i < batch->cnt; i++) {
+		struct snbuf *dst;
+		dst = snb_copy(batch->pkts[i]);
+		batch_add(&batchCopy, dst);
+	}
+	/*for (int i = 0; i < priv->ngates; i++) {
+
+	}*/
+	run_choose_module(m, 0, batch);
+    	run_choose_module(m, 1, &batchCopy);
+	/*for (int i = 0; i < priv->ngates; i++) {
 		struct pkt_batch batchCopy;
 		batch_copy(&batchCopy, batch);
 		
 		run_choose_module(m, i, &batchCopy);
 	}
-
-	snb_free_bulk(batch->pkts, batch->cnt);
+	snb_free_bulk(batch->pkts, batch->cnt);*/ 
 }
 
 static const struct mclass mirror = {

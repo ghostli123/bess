@@ -9,13 +9,20 @@
 
 #define MAX_RR_GATES	16384
 
-#define CLIENT  0
-#define VM1	1  
-#define VM2	2
+//igate
+#define IGATE_CLIENT    0
+#define IGATE_VM1B	1  
+#define IGATE_VM2B	2
+#define IGATE_SERVER    3
+#define IGATE_VM1A	4  
+#define IGATE_VM2A	5
 
-#define MIRROR 0
-#define DROP 1
-#define DESTINATION 2
+//ogate
+#define OGATE_MIRROR1	    0
+#define OGATE_DROP	    1
+#define OGATE_SERVER	    2
+#define OGATE_MIRROR2	    3
+#define OGATE_CLIENT	    4
 
 #define PARALLEL_OGATE 0
 #define SERIAL_OGATE 1
@@ -25,7 +32,7 @@
 #define PROTO_TYPE_UDP  0x11
 #define OUTBOUND 0
 #define INBOUND  1
-#define MAX_MAP_ENTRIES 100
+#define MAX_MAP_ENTRIES 99999
 #define NAT_START_PORT  44001
 
 struct l2_table
@@ -229,7 +236,7 @@ static int find_matching_entry(struct yang_priv *priv,
 	for(int i=0; i<priv->num_entries; i++) {
 		entry = &(priv->entry[i]);
 		//printf("direction %d", direction);
-		if (direction == CLIENT) {
+		if (direction == IGATE_CLIENT) {
 		  if (outbound_flow_match(entry,
 					  ipid
 					  //src_port,
@@ -237,7 +244,24 @@ static int find_matching_entry(struct yang_priv *priv,
 					  ))
 		    return i;
 		}
-		else if (direction == VM1 || direction == VM2) {
+		else if (direction == IGATE_VM1B || direction == IGATE_VM2B) {
+		  if (inbound_flow_match(//priv,
+					 entry,
+					 ipid
+					 //src_port,
+					 //dst_port))
+					 ))
+		    return i;
+		}
+		else if (direction == IGATE_SERVER) {
+		  if (outbound_flow_match(entry,
+					  ipid
+					  //src_port,
+					  //dst_port))
+					  ))
+		    return i;
+		}
+		else if (direction == IGATE_VM1A || direction == IGATE_VM2A) {
 		  if (inbound_flow_match(//priv,
 					 entry,
 					 ipid
@@ -307,8 +331,8 @@ static void yang_process_batch(struct module *m,
 		pkt = snb_copy(batch->pkts[i]);
 		
 		int ind = -1;
-		//printf("start3 ipid %d \n", ipid);
-		if (direction[i] == CLIENT) {
+		printf("start3 ipid %d \n", ipid);
+		if (direction[i] == IGATE_CLIENT) {
 			//if the direction is going to VNF
 			//add sequence number into table as tag 
 			//add batch->pkts[i] to table as data
@@ -318,7 +342,7 @@ static void yang_process_batch(struct module *m,
 					    	  direction[i],
 					    	  ipid);
 
-			//printf("process batch, index: %d\n", ind);
+			printf("process batch, index: %d\n", ind);
 			// add entry if none exists
 			if (ind < 0)
 			{
@@ -326,15 +350,17 @@ static void yang_process_batch(struct module *m,
 					    	ipid,
 						pkt,
 						count);
-				ogates[i] = MIRROR;
+				ogates[i] = OGATE_MIRROR1;
 			}
 			else {
 				printf("duplicated ipid\n");
-				continue;
+				ogates[i] = OGATE_DROP;
+				//continue;
 			}
 		}
 
-		else if (direction[i] == VM1) {  //the direction is going out (return packets from VNF)
+		else if (direction[i] == IGATE_VM1B) {  
+			//the direction is going out (return packets from VNF)
 			//find corresponding entry in table by sequence number
 			//update (i.e. xor) packet with corresponding data in the table, (free the memory in batch later)
 			//count--
@@ -351,21 +377,23 @@ static void yang_process_batch(struct module *m,
 				if ( entry->count == 0 ) {
 					//delete entry
 					delete_entry(priv, ind);
-					ogates[i] = DESTINATION;	
+					ogates[i] = OGATE_SERVER;	
 				}
 				else {
-					ogates[i] = DROP;
+					ogates[i] = OGATE_DROP;
 				}
 		 	}
 		 	else{
 		 		// packet should be deleted
 		 		//log_info("ENTRY NOT FOUND\n");
 				printf("ENTRY NOT FOUND\n");	
-		 		continue;
+				ogates[i] = OGATE_DROP;
+		 		//continue;
 		 	}
 		}
 
-		else if (direction[i] == VM2) {  //the direction is going out (return packets from VNF)
+		else if (direction[i] == IGATE_VM2B) {  
+			//the direction is going out (return packets from VNF)
 			//find corresponding entry in table by sequence number
 			//update (i.e. xor) packet with corresponding data in the table, (free the memory in batch later)
 			//count--
@@ -382,23 +410,119 @@ static void yang_process_batch(struct module *m,
 				if ( entry->count == 0 ) {
 					//delete entry
 					delete_entry(priv, ind);
-					ogates[i] = DESTINATION;						
+					ogates[i] = OGATE_SERVER;						
 				}
 				else {
-					ogates[i] = DROP;
+					ogates[i] = OGATE_DROP;
 				}
 		 	}
 		 	else{
 		 		// packet should be deleted
 		 		//log_info("ENTRY NOT FOUND\n");
 				printf("ENTRY NOT FOUND\n");	
-		 		continue;
+				ogates[i] = OGATE_DROP;
+		 		//continue;
+		 	}
+		}
+
+
+		else if (direction[i] == IGATE_SERVER) {
+			//if the direction is going to VNF
+			//add sequence number into table as tag 
+			//add batch->pkts[i] to table as data
+			//add the number of distributed vnf to table as count
+			// check for an existing entry
+		  	ind = find_matching_entry(priv,
+					    	  direction[i],
+					    	  ipid);
+
+			printf("process batch, index: %d\n", ind);
+			// add entry if none exists
+			if (ind < 0)
+			{
+				ind = add_entry(priv,
+					    	ipid,
+						pkt,
+						count);
+				ogates[i] = OGATE_MIRROR2;
+			}
+			else {
+				printf("duplicated ipid\n");
+				ogates[i] = OGATE_DROP;
+				//continue;
+			}
+		}
+
+		else if (direction[i] == IGATE_VM1A) {  
+			//the direction is going out (return packets from VNF)
+			//find corresponding entry in table by sequence number
+			//update (i.e. xor) packet with corresponding data in the table, (free the memory in batch later)
+			//count--
+			//if count = 0: replace the packet in batch and destroy the entry; set it as ready for sending out; send out
+			// check for an existing entry in priv->map
+		  	ind = find_matching_entry(priv,
+					    direction[i],
+					    ipid);	
+			
+			// if one exists, rewrite destination ip/port
+		 	if (ind >= 0) {
+		 		entry = &(priv->entry[ind]);
+				entry->count -= 1;
+				if ( entry->count == 0 ) {
+					//delete entry
+					delete_entry(priv, ind);
+					ogates[i] = OGATE_CLIENT;	
+				}
+				else {
+					ogates[i] = OGATE_DROP;
+				}
+		 	}
+		 	else{
+		 		// packet should be deleted
+		 		//log_info("ENTRY NOT FOUND\n");
+				printf("ENTRY NOT FOUND\n");	
+				ogates[i] = OGATE_DROP;
+		 		//continue;
+		 	}
+		}
+
+		else if (direction[i] == IGATE_VM2A) {  
+			//the direction is going out (return packets from VNF)
+			//find corresponding entry in table by sequence number
+			//update (i.e. xor) packet with corresponding data in the table, (free the memory in batch later)
+			//count--
+			//if count = 0: replace the packet in batch and destroy the entry; set it as ready for sending out; send out
+			// check for an existing entry in priv->map
+		  	ind = find_matching_entry(priv,
+					    direction[i],
+					    ipid);	
+			
+			// if one exists, rewrite destination ip/port
+		 	if (ind >= 0) {
+		 		entry = &(priv->entry[ind]);
+				entry->count -= 1;
+				if ( entry->count == 0 ) {
+					//delete entry
+					delete_entry(priv, ind);
+					ogates[i] = OGATE_CLIENT;						
+				}
+				else {
+					ogates[i] = OGATE_DROP;
+				}
+		 	}
+		 	else{
+		 		// packet should be deleted
+		 		//log_info("ENTRY NOT FOUND\n");
+				printf("ENTRY NOT FOUND\n");	
+				ogates[i] = OGATE_DROP;
+		 		//continue;
 		 	}
 		}
 
 		else {
 			printf("WRONG IGATE\n");
-			continue;
+			ogates[i] = OGATE_DROP;
+			//continue;
 		}
 	}
 	run_split(m, ogates, batch);
