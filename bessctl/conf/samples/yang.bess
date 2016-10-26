@@ -1,10 +1,10 @@
-SRCPID=25866
-APID=25925
-BPID=25982
-DSTPID=26037
+SRCPID=5359
+APID=5417
+BPID=5474
+DSTPID=5530
 #BPID=100539 
 
-#S = VPort(container_pid=SRCPID,name='test_namespace_eth11',ifname='eth11',ip_addr='192.168.10.11/24',mac_addr='02:00:00:00:00:11')
+S = VPort(container_pid=SRCPID,name='test_namespace_eth10',ifname='eth10',ip_addr='192.168.10.10/24',mac_addr='02:00:00:00:00:10')
 A1 = VPort(container_pid=APID,name='test_namespace_eth22',ifname='eth22',ip_addr='192.168.10.22/24',mac_addr='02:00:00:00:00:22')
 A2 = VPort(container_pid=APID,name='test_namespace_eth23',ifname='eth23',ip_addr='192.168.10.23/24',mac_addr='02:00:00:00:00:23')
 B1 = VPort(container_pid=BPID,name='test_namespace_eth24',ifname='eth24',ip_addr='192.168.10.24/24',mac_addr='02:00:00:00:00:24')
@@ -27,133 +27,21 @@ A1i = A1i::PortInc(port=A1)
 A2o = A2o::PortOut(port=A2)
 B1i = B1i::PortInc(port=B1)
 
-#baseline
-Si -> A1o
-A2i -> B1o
-B2i -> Do
-Di -> B2o
-B1i -> A2o
-A1i -> So
+#standard parallel setup
+y::YANG(gates=5)
+m1::Mirror(gates=2)
+m2::Mirror(gates=2)
+Si -> 0:y:0 -> m1
+m1:0 -> A1o
+m1:1 -> B1o
+A2i -> 1:y
+B2i -> 2:y
+y:1 -> Sink()
+y:2 -> Do
+Di -> 3:y:3 -> m2
+m2:0 -> A2o
+m2:1 -> B2o 
+A1i -> 4:y
+B1i -> 5:y
+y:4 -> So
 
-##standard parallel setup
-#y::YANG(gates=3)
-#m1::Mirror(gates=2)
-#m2::Mirror(gates=2)
-#Si -> 0:y:0 -> m1
-#m1:0 -> A1o
-#m1:1 -> B1o
-#A2i -> 1:y
-#B2i -> 2:y
-#y:1 -> Sink()
-#y:2 -> Do
-#Di -> 3:y:3 -> m2
-#m2:0 -> A2o
-#m2:1 -> B2o 
-#A1i -> 4:y
-#B1i -> 5:y
-#y:4 -> So
-
-##source -> yang -> mirror -> vm1 | vm2 -> yang -> destination -> source
-#y::YANG(gates=3)
-#m::Mirror(gates=2)
-##Si -> 0:y:0 -> A1o
-#Si -> 0:y:0 -> m
-#m:0 -> A1o
-#m:1 -> B1o
-##Si -> A1o
-##A2i -> Do
-#A2i -> 1:y
-#B2i -> 2:y
-#y:1 -> Sink()
-#y:2 -> Do
-#Di -> So 
-##B2i -> Do
-##Di -> So
-##Di -> A2o
-##B1i -> A2o
-##A1i -> So
-
-#y::YANG(gates=3)
-#m::Mirror(gates=2)
-##Si -> 0:y:0 -> A1o
-#Si -> 0:y:0 -> m
-#m:0 -> A1o
-#m:1 -> B1o
-##Si -> A1o
-#A2i -> Do
-##B2i -> Do
-##Di -> So
-#Di -> A2o
-##B1i -> A2o
-#A1i -> So
-##y::YANG(gates=3)
-##
-##Si -> 0:y:0 -> m::Mirror(gates=2)
-###Si -> 0:y:0 -> A1o
-##m:0 -> A1o
-##m:1 -> B1o
-
-
-#A2i -> 1:y
-#B2i -> 2:y
-#y:1 -> Sink()
-#y:2 -> Do
-#
-#Di -> So
-
-
-#A2i -> Do
-#Di -> A2o
-#A1i -> So
-
-
-
-##Si -> Do
-##Di -> So
-#
-##Si -> SetMetadata(attrs=[{'name': 'foo', 'size': 1, 'value': 0xcc}]) -> SetMetadata(attrs=[{'name': 'bar', 'size': 2, 'value': 0x1122}]) -> A1o
-##SetMetadata(attrs=[{'name': 'bar', 'size': 2, 'value': 0x1122}])
-##Si -> A1o
-#em::ExactMatch(fields=[{'attr':'foo', 'size':1}, \
-#                       {'attr':'bar', 'size':2}])
-#Si -> SetMetadata(attrs=[{'name': 'foo', 'size': 1, 'value': 0xcc}]) -> SetMetadata(attrs=[{'name': 'bar', 'size': 2, 'value': 0x1122}]) -> em 
-##Si -> Timestamp() -> A1o
-#A2i -> em
-#em.set_default_gate(0)
-#em:0 -> Sink()
-#em:1 -> Dump() -> Do
-#em:2 -> Sink()
-##A2i -> Do
-##A2i -> m::Measure() -> Do
-#Di -> A2o
-#A1i -> So
-#
-## NOTE: metadata attribute values are stored in host order (little endian)!
-#em.add(fields=['\xcc', '\x22\x11'], gate=1)
-#em.add(fields=[0x42, 0x3344], gate=2)
-
-# For metadata attribute usage for wildcard matching,
-# also see samples/wildcardmatch.bess
-
-#em::ExactMatch(fields=[{'attr':'foo', 'size':1}, \
-#                       {'attr':'bar', 'size':2}])
-#Si \
-#        -> SetMetadata(attrs=[{'name': 'foo', 'size': 1, 'value': 0xcc}]) \
-#        -> SetMetadata(attrs=[{'name': 'bar', 'size': 2, 'value': 0x1122}]) \
-#        -> A1o
-#A2i -> em
-#
-##Source() \
-##        -> SetMetadata(attrs=[{'name':'bar', 'size':2, 'value':0x3344},
-##                              {'name':'foo', 'size':1, 'value':0x42}]) \
-##        -> em
-#
-#em.set_default_gate(0)
-#em:0 -> Sink()
-#em:1 -> Dump() -> Do
-#Di -> So
-#em:2 -> Sink()
-#
-## NOTE: metadata attribute values are stored in host order (little endian)!
-#em.add(fields=['\xcc', '\x22\x11'], gate=1)
-#em.add(fields=[0x42, 0x3344], gate=2)

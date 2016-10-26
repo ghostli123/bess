@@ -32,7 +32,7 @@
 #define PROTO_TYPE_UDP  0x11
 #define OUTBOUND 0
 #define INBOUND  1
-#define MAX_MAP_ENTRIES 99999
+#define MAX_MAP_ENTRIES 9999999
 #define NAT_START_PORT  44001
 
 struct l2_table
@@ -159,7 +159,7 @@ static void delete_entry(struct yang_priv *priv,
 	priv->entry[priv->num_entries].out_port = out_port;
 	priv->entry[priv->num_entries].nat_port = htons(NAT_START_PORT +
 							priv->num_entries);*/
-	priv->entry[index].ipid = 0;
+	priv->entry[index].ipid = -1;
 	priv->entry[index].count = 0;
 	snb_free(priv->entry[index].pkt);
 	priv->entry[index].pkt = 0;
@@ -282,6 +282,7 @@ static struct snobj *yang_init(struct module *m,
 {
 	log_info("YANG:yang_init\n");
 	printf("yang:init\n");
+	
 	struct yang_priv *priv = get_priv(m);
 	priv->ether_type_ipv4 = htons(ETHER_TYPE_IPv4);
 
@@ -302,6 +303,7 @@ static struct snobj *yang_init(struct module *m,
 static void yang_process_batch(struct module *m,
 			       struct pkt_batch *batch)
 {
+	//printf("CLOCKS_PER_SEC: %ld\n", CLOCKS_PER_SEC);
 	gate_idx_t ogates[MAX_PKT_BURST];
 	gate_idx_t direction[MAX_PKT_BURST];
         struct ether_hdr *eth;
@@ -328,11 +330,15 @@ static void yang_process_batch(struct module *m,
 
 		ip = (struct ipv4_hdr *)(eth + 1);
 		ipid = ip->packet_id;
-		pkt = snb_copy(batch->pkts[i]);
+		
 		
 		int ind = -1;
 		//printf("start3 ipid %d \n", ipid);
 		if (direction[i] == IGATE_CLIENT) {
+			clock_t start = clock();
+			printf("IGATE_CLIENT ipid %d clock_t start %LF\n", ipid, (long double)start);
+
+			pkt = snb_copy(batch->pkts[i]);
 			//if the direction is going to VNF
 			//add sequence number into table as tag 
 			//add batch->pkts[i] to table as data
@@ -360,6 +366,10 @@ static void yang_process_batch(struct module *m,
 		}
 
 		else if (direction[i] == IGATE_VM1B) {  
+			clock_t start = clock();
+			printf("IGATE_VM1B ipid %d clock_t start %LF\n", ipid, (long double)start);
+
+			pkt = snb_copy(batch->pkts[i]);
 			//the direction is going out (return packets from VNF)
 			//find corresponding entry in table by sequence number
 			//update (i.e. xor) packet with corresponding data in the table, (free the memory in batch later)
@@ -376,10 +386,17 @@ static void yang_process_batch(struct module *m,
 				entry->count -= 1;
 				if ( entry->count == 0 ) {
 					//delete entry
+	
+					clock_t start = clock();
+					printf("IGATE_VM1B ipid %d clock_t start %LF\n", ipid, (long double)start);
+					
 					delete_entry(priv, ind);
+					
 					ogates[i] = OGATE_SERVER;	
 				}
 				else {
+					snb_free(entry->pkt);
+					entry->pkt = pkt;	
 					ogates[i] = OGATE_DROP;
 				}
 		 	}
@@ -393,6 +410,8 @@ static void yang_process_batch(struct module *m,
 		}
 
 		else if (direction[i] == IGATE_VM2B) {  
+			clock_t start = clock();
+			printf("IGATE_VM2B ipid %d clock_t start %LF\n", ipid, (long double)start);
 			//the direction is going out (return packets from VNF)
 			//find corresponding entry in table by sequence number
 			//update (i.e. xor) packet with corresponding data in the table, (free the memory in batch later)
@@ -408,6 +427,13 @@ static void yang_process_batch(struct module *m,
 		 		entry = &(priv->entry[ind]);
 				entry->count -= 1;
 				if ( entry->count == 0 ) {
+
+					clock_t start = clock();
+					printf("IGATE_VM2B ipid %d clock_t start %LF\n", ipid, (long double)start);
+					
+					pkt = snb_copy(entry->pkt);
+					snb_free(batch->pkts[i]);
+					batch->pkts[i] = pkt;
 					//delete entry
 					delete_entry(priv, ind);
 					ogates[i] = OGATE_SERVER;						
@@ -427,6 +453,10 @@ static void yang_process_batch(struct module *m,
 
 
 		else if (direction[i] == IGATE_SERVER) {
+			clock_t start = clock();
+			printf("IGATE_SERVER ipid %d clock_t start %LF\n", ipid, (long double)start);
+
+			pkt = snb_copy(batch->pkts[i]);
 			//if the direction is going to VNF
 			//add sequence number into table as tag 
 			//add batch->pkts[i] to table as data
@@ -453,7 +483,10 @@ static void yang_process_batch(struct module *m,
 			}
 		}
 
-		else if (direction[i] == IGATE_VM1A) {  
+		else if (direction[i] == IGATE_VM1A) {
+			clock_t start = clock();
+			printf("IGATE_VM1A ipid %d clock_t start %LF\n", ipid, (long double)start);  
+			pkt = snb_copy(batch->pkts[i]);
 			//the direction is going out (return packets from VNF)
 			//find corresponding entry in table by sequence number
 			//update (i.e. xor) packet with corresponding data in the table, (free the memory in batch later)
@@ -469,11 +502,17 @@ static void yang_process_batch(struct module *m,
 		 		entry = &(priv->entry[ind]);
 				entry->count -= 1;
 				if ( entry->count == 0 ) {
+
+					//pkt = snb_copy(entry->pkt);
+					//snb_free(batch->pkts[i]);
+					//batch->pkts[i] = pkt;
 					//delete entry
 					delete_entry(priv, ind);
 					ogates[i] = OGATE_CLIENT;	
 				}
 				else {
+					snb_free(entry->pkt);
+					entry->pkt = pkt;
 					ogates[i] = OGATE_DROP;
 				}
 		 	}
@@ -486,7 +525,9 @@ static void yang_process_batch(struct module *m,
 		 	}
 		}
 
-		else if (direction[i] == IGATE_VM2A) {  
+		else if (direction[i] == IGATE_VM2A) {
+			clock_t start = clock();
+			printf("IGATE_VM2A ipid %d clock_t start %LF\n", ipid, (long double)start);  
 			//the direction is going out (return packets from VNF)
 			//find corresponding entry in table by sequence number
 			//update (i.e. xor) packet with corresponding data in the table, (free the memory in batch later)
@@ -502,6 +543,9 @@ static void yang_process_batch(struct module *m,
 		 		entry = &(priv->entry[ind]);
 				entry->count -= 1;
 				if ( entry->count == 0 ) {
+					pkt = snb_copy(entry->pkt);
+					snb_free(batch->pkts[i]);
+					batch->pkts[i] = pkt;
 					//delete entry
 					delete_entry(priv, ind);
 					ogates[i] = OGATE_CLIENT;						
