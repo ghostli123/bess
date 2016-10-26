@@ -71,7 +71,7 @@ struct yang_priv {
 	uint32_t ether_type_ipv4;
 	struct yang_mapping_entry entry[MAX_MAP_ENTRIES];
 	int num_entries;
-
+	uint32_t removal_index;
 	gate_idx_t gates[MAX_RR_GATES];
 	int ngates;
 	int current_gate;
@@ -163,7 +163,7 @@ static void delete_entry(struct yang_priv *priv,
 	priv->entry[index].count = 0;
 	snb_free(priv->entry[index].pkt);
 	priv->entry[index].pkt = 0;
-	
+	priv->removal_index = index;
 	//priv->num_entries--;
 	//return priv->num_entries - 1;
 }
@@ -233,7 +233,9 @@ static int find_matching_entry(struct yang_priv *priv,
 			       //uint16_t *dst_port)
 {
 	struct yang_mapping_entry *entry;
-	for(int i=0; i<priv->num_entries; i++) {
+
+	int i=priv->removal_index;
+	for(; i<priv->num_entries; i++) {
 		entry = &(priv->entry[i]);
 		//printf("direction %d", direction);
 		if (direction == IGATE_CLIENT) {
