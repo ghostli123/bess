@@ -32,49 +32,24 @@
 #define PROTO_TYPE_UDP  0x11
 #define OUTBOUND 0
 #define INBOUND  1
-#define MAX_MAP_ENTRIES 9999999
+#define MAX_MAP_ENTRIES 65536
 #define NAT_START_PORT  44001
-
-struct l2_table
-{
-        struct l2_entry *table;
-        uint64_t size;
-        uint64_t size_power;
-        uint64_t bucket;
-        uint64_t count;
-};
-
-static void log_info_ip(uint32_t ip)
-{
-	char buf[16];
-	const char* result=inet_ntop(AF_INET,&ip,buf,sizeof(buf));
-	if (result==0) {
-	  log_info("failed to convert address to string (errno=%d)",errno);
-	}
-	log_info("%s", buf);
-}
 
 
 struct yang_mapping_entry {
-	/*uint32_t in_ip;
-	uint32_t out_ip;
-	uint16_t in_port;
-	uint16_t out_port;
-	uint16_t nat_port;*/
-	uint16_t ipid;
+	//uint16_t ipid;
 	struct snbuf *pkt;
 	uint16_t count;
 };
 
 struct yang_priv {
-	//uint32_t nat_ip;
 	uint32_t ether_type_ipv4;
 	struct yang_mapping_entry entry[MAX_MAP_ENTRIES];
 	int num_entries;
-	uint32_t removal_index;
+	//uint32_t removal_index;
 	gate_idx_t gates[MAX_RR_GATES];
 	int ngates;
-	int current_gate;
+	//int current_gate;
 	int per_packet;
 };
 
@@ -145,139 +120,44 @@ command_set_gates(struct module *m, const char *cmd, struct snobj *arg)
 }
 
 static void delete_entry(struct yang_priv *priv,
-			 int index)
+			 uint16_t ipid)
 {
+	if (priv->num_entries == 0)
+		return;
+	priv->entry[ipid].count = 0;
+	snb_free(priv->entry[ipid].pkt);
+	priv->entry[ipid].pkt = 0;
+	priv->num_entries--;
+
 	//printf("going to delete\n");
 	//delete
 	if (priv->num_entries == 0)
 		return;
-	//printf("del_entry: index %d\n", index);
-  
-	/*priv->entry[priv->num_entries].in_ip    = in_ip;
-	priv->entry[priv->num_entries].out_ip   = out_ip;
-	priv->entry[priv->num_entries].in_port  = in_port;
-	priv->entry[priv->num_entries].out_port = out_port;
-	priv->entry[priv->num_entries].nat_port = htons(NAT_START_PORT +
-							priv->num_entries);*/
-	priv->entry[index].ipid = -1;
-	priv->entry[index].count = 0;
-	snb_free(priv->entry[index].pkt);
-	priv->entry[index].pkt = 0;
-	priv->removal_index = index;
-	//priv->num_entries--;
-	//return priv->num_entries - 1;
+
 }
 
-static int add_entry(struct yang_priv *priv,
+
+
+static int add_matching_entry(struct yang_priv *priv,
 		     uint16_t ipid,
 		     struct snbuf *pkt,
 		     uint16_t count)
-		     //uint32_t in_ip,
-		     //uint16_t in_port,
-		     //uint32_t out_ip,
-		     //uint16_t out_port)
 {
+	//printf("entry default count: %d; count intended to set is %d\n", priv->entry[ipid].count, count);
 	if (priv->num_entries == MAX_MAP_ENTRIES)
 		return -1;
-	//printf("add_entry: ipid %d\n", ipid);
-  
-	/*priv->entry[priv->num_entries].in_ip    = in_ip;
-	priv->entry[priv->num_entries].out_ip   = out_ip;
-	priv->entry[priv->num_entries].in_port  = in_port;
-	priv->entry[priv->num_entries].out_port = out_port;
-	priv->entry[priv->num_entries].nat_port = htons(NAT_START_PORT +
-							priv->num_entries);*/
-	priv->entry[priv->num_entries].ipid = ipid;
-	priv->entry[priv->num_entries].count = count;
-	priv->entry[priv->num_entries].pkt = pkt;
-	
-	priv->num_entries++;
-	return priv->num_entries - 1;
-}
 
-
-static int outbound_flow_match(struct yang_mapping_entry *entry,
-			       /*struct ipv4_hdr *ip,
-			       uint16_t *src_port,
-			       uint16_t *dst_port)*/
-			       uint16_t ipid)
-{
-	/*return ( ip->src_addr == entry->in_ip   &&
-		 *src_port    == entry->in_port &&
-		 ip->dst_addr == entry->out_ip  &&
-		 *dst_port    == entry->out_port );*/
-	return ( ipid == entry->ipid );
-}
-
-
-static int inbound_flow_match(//struct yang_priv *priv,
-			      struct yang_mapping_entry *entry,
-			      /*struct ipv4_hdr *ip,
-			      uint16_t *src_port,
-			      uint16_t *dst_port)*/
-			      uint16_t ipid)
-{
-	/*return ( ip->dst_addr == priv->nat_ip &&
-		 *dst_port    == entry->nat_port &&
-		 ip->src_addr == entry->out_ip &&
-		 *src_port    == entry->out_port );*/
-	return ( ipid == entry->ipid );
-}
-
-
-static int find_matching_entry(struct yang_priv *priv,
-			       gate_idx_t direction,
-			       uint16_t ipid)
-			       //struct ipv4_hdr *ip,
-			       //uint16_t *src_port,
-			       //uint16_t *dst_port)
-{
-	struct yang_mapping_entry *entry;
-
-	int i=priv->removal_index;
-	for(; i<priv->num_entries; i++) {
-		entry = &(priv->entry[i]);
-		//printf("direction %d", direction);
-		if (direction == IGATE_CLIENT) {
-		  if (outbound_flow_match(entry,
-					  ipid
-					  //src_port,
-					  //dst_port))
-					  ))
-		    return i;
-		}
-		else if (direction == IGATE_VM1B || direction == IGATE_VM2B) {
-		  if (inbound_flow_match(//priv,
-					 entry,
-					 ipid
-					 //src_port,
-					 //dst_port))
-					 ))
-		    return i;
-		}
-		else if (direction == IGATE_SERVER) {
-		  if (outbound_flow_match(entry,
-					  ipid
-					  //src_port,
-					  //dst_port))
-					  ))
-		    return i;
-		}
-		else if (direction == IGATE_VM1A || direction == IGATE_VM2A) {
-		  if (inbound_flow_match(//priv,
-					 entry,
-					 ipid
-					 //src_port,
-					 //dst_port))
-					 ))
-		    return i;
-		}
-		else
-		  return -1;
+	if (priv->entry[ipid].count > 0) {
+		return -1;
 	}
-	return -1;
+	else {
+		priv->entry[ipid].count = count;
+		priv->entry[ipid].pkt = pkt; 
+		priv-> num_entries++;
+	}
+	//printf("after entry set, the count is %d\n", priv->entry[ipid].count);
+	return ipid;
 }
-
 
 static struct snobj *yang_init(struct module *m,
 			       struct snobj *arg)
@@ -305,71 +185,64 @@ static struct snobj *yang_init(struct module *m,
 static void yang_process_batch(struct module *m,
 			       struct pkt_batch *batch)
 {
-	//printf("CLOCKS_PER_SEC: %ld\n", CLOCKS_PER_SEC);
 	gate_idx_t ogates[MAX_PKT_BURST];
 	gate_idx_t direction[MAX_PKT_BURST];
-        struct ether_hdr *eth;
-        struct ipv4_hdr *ip;
-        //void *l4;
-        //uint16_t *l4_cksum;
-        //uint16_t *src_port;
-        //uint16_t *dst_port;
-        struct yang_priv *priv = get_priv(m);
-        struct yang_mapping_entry *entry;
+    struct ether_hdr *eth;
+    struct ipv4_hdr *ip;
+    struct yang_priv *priv = get_priv(m);
+    struct yang_mapping_entry *entry;
 	uint16_t ipid;
 	uint16_t count = 2;
 	struct snbuf *pkt; 
+
 	for (int i = 0; i < batch->cnt; i++) {
 		direction[i] = get_igate();
-
 		//printf("process batch, igate: %d\n", direction[i]);
-
 		eth = (struct ether_hdr *)snb_head_data(batch->pkts[i]);
-
 		//printf("start1 %d, %d\n", eth->ether_type, priv->ether_type_ipv4);
-
 		//printf("start2\n");
-
 		ip = (struct ipv4_hdr *)(eth + 1);
 		ipid = ip->packet_id;
-		
-		
+
 		int ind = -1;
-		//printf("start3 ipid %d \n", ipid);
+		//printf("start3 ipid %d, direction %d \n", ipid, direction[i]);
 		if (direction[i] == IGATE_CLIENT) {
-			clock_t start = clock();
-			printf("IGATE_CLIENT ipid %d clock_t start %LF\n", ipid, (long double)start);
+
+			struct timeval timer_usec;
+			long long int timestamp_usec; /* timestamp in microsecond */
+			gettimeofday(&timer_usec, NULL);
+			timestamp_usec = ((long long int) timer_usec.tv_sec) * 1000000ll +
+						                        (long long int) timer_usec.tv_usec;
+			printf("IGATE_CLIENT ipid %d, %lld microseconds since epoch\n", ipid, timestamp_usec);
+
+
+			//clock_t start = clock();
+			//printf("IGATE_CLIENT ipid %d clock_t start %LF\n", ipid, (long double)start);
 
 			pkt = snb_copy(batch->pkts[i]);
-			//if the direction is going to VNF
-			//add sequence number into table as tag 
-			//add batch->pkts[i] to table as data
-			//add the number of distributed vnf to table as count
-			// check for an existing entry
-		  	ind = find_matching_entry(priv,
-					    	  direction[i],
-					    	  ipid);
-
-			//printf("process batch, index: %d\n", ind);
-			// add entry if none exists
-			if (ind < 0)
-			{
-				ind = add_entry(priv,
-					    	ipid,
-						pkt,
-						count);
-				ogates[i] = OGATE_MIRROR1;
-			}
-			else {
+			//if (priv->entry[ipid].count > 0)
+			//ind = find_matching_entry(priv, ipid);
+			ind = add_matching_entry(priv, ipid, pkt, count);
+			if (ind == -1) {
 				printf("duplicated ipid\n");
 				ogates[i] = OGATE_DROP;
-				//continue;
+			}
+			else {
+				ogates[i] = OGATE_MIRROR1;
 			}
 		}
 
 		else if (direction[i] == IGATE_VM1B) {  
-			clock_t start = clock();
-			printf("IGATE_VM1B ipid %d clock_t start %LF\n", ipid, (long double)start);
+			//clock_t start = clock();
+			//printf("IGATE_VM1B ipid %d clock_t start %LF\n", ipid, (long double)start);
+
+			struct timeval timer_usec;
+			long long int timestamp_usec; /* timestamp in microsecond */
+			gettimeofday(&timer_usec, NULL);
+			timestamp_usec = ((long long int) timer_usec.tv_sec) * 1000000ll +
+						                        (long long int) timer_usec.tv_usec;
+			printf("IGATE_VM1B ipid %d, %lld microseconds since epoch\n", ipid, timestamp_usec);
+
 
 			pkt = snb_copy(batch->pkts[i]);
 			//the direction is going out (return packets from VNF)
@@ -378,22 +251,19 @@ static void yang_process_batch(struct module *m,
 			//count--
 			//if count = 0: replace the packet in batch and destroy the entry; set it as ready for sending out; send out
 			// check for an existing entry in priv->map
-		  	ind = find_matching_entry(priv,
-					    direction[i],
-					    ipid);	
-			
-			// if one exists, rewrite destination ip/port
-		 	if (ind >= 0) {
-		 		entry = &(priv->entry[ind]);
+
+			//if the item exists in the table
+			if (priv->entry[ipid].count > 0) {
+				entry = &(priv->entry[ipid]);
+				//printf("VM1B entry count before minus 1 is: %d, ipid: %d\n", entry->count, ipid);
 				entry->count -= 1;
-				if ( entry->count == 0 ) {
-					//delete entry
-	
-					clock_t start = clock();
-					printf("IGATE_VM1B ipid %d clock_t start %LF\n", ipid, (long double)start);
-					
-					delete_entry(priv, ind);
-					
+
+				//printf("VM1B entry count after minus 1: %d, ipid: %d\n", entry->count, ipid);
+
+				if (entry->count == 0) {
+					//clock_t start = clock();
+					//printf("IGATE_VM1B ipid %d clock_t start %LF\n", ipid, (long double)start);
+					delete_entry(priv, ipid);
 					ogates[i] = OGATE_SERVER;	
 				}
 				else {
@@ -401,93 +271,99 @@ static void yang_process_batch(struct module *m,
 					entry->pkt = pkt;	
 					ogates[i] = OGATE_DROP;
 				}
-		 	}
+			}
+			//if the item does NOT exist in the table
 		 	else{
-		 		// packet should be deleted
-		 		//log_info("ENTRY NOT FOUND\n");
 				printf("ENTRY NOT FOUND\n");	
 				ogates[i] = OGATE_DROP;
-		 		//continue;
 		 	}
 		}
 
 		else if (direction[i] == IGATE_VM2B) {  
-			clock_t start = clock();
-			printf("IGATE_VM2B ipid %d clock_t start %LF\n", ipid, (long double)start);
+			//clock_t start = clock();
+			//printf("IGATE_VM2B ipid %d clock_t start %LF\n", ipid, (long double)start);
+
+			struct timeval timer_usec;
+			long long int timestamp_usec; /* timestamp in microsecond */
+			gettimeofday(&timer_usec, NULL);
+			timestamp_usec = ((long long int) timer_usec.tv_sec) * 1000000ll +
+						                        (long long int) timer_usec.tv_usec;
+			printf("IGATE_VM2B ipid %d, %lld microseconds since epoch\n", ipid, timestamp_usec);
+
+			
 			//the direction is going out (return packets from VNF)
 			//find corresponding entry in table by sequence number
 			//update (i.e. xor) packet with corresponding data in the table, (free the memory in batch later)
 			//count--
 			//if count = 0: replace the packet in batch and destroy the entry; set it as ready for sending out; send out
 			// check for an existing entry in priv->map
-		  	ind = find_matching_entry(priv,
-					    direction[i],
-					    ipid);	
-			
-			// if one exists, rewrite destination ip/port
-		 	if (ind >= 0) {
-		 		entry = &(priv->entry[ind]);
-				entry->count -= 1;
-				if ( entry->count == 0 ) {
 
-					clock_t start = clock();
-					printf("IGATE_VM2B ipid %d clock_t start %LF\n", ipid, (long double)start);
-					
+			if (priv->entry[ipid].count > 0) {			
+		 		entry = &(priv->entry[ipid]);
+				//printf("VM2B entry count before minus 1 is: %d, ipid: %d\n", entry->count, ipid);
+				entry->count -= 1;
+
+				//printf("VM2B entry count after minus 1: %d, ipid: %d\n", entry->count, ipid);
+
+				if ( entry->count == 0 ) {
+					//clock_t start = clock();
+					//printf("IGATE_VM2B ipid %d clock_t start %LF\n", ipid, (long double)start);
 					pkt = snb_copy(entry->pkt);
 					snb_free(batch->pkts[i]);
 					batch->pkts[i] = pkt;
 					//delete entry
-					delete_entry(priv, ind);
-					ogates[i] = OGATE_SERVER;						
+					delete_entry(priv, ipid);
+					ogates[i] = OGATE_SERVER;
 				}
 				else {
 					ogates[i] = OGATE_DROP;
 				}
 		 	}
 		 	else{
-		 		// packet should be deleted
-		 		//log_info("ENTRY NOT FOUND\n");
 				printf("ENTRY NOT FOUND\n");	
 				ogates[i] = OGATE_DROP;
-		 		//continue;
 		 	}
 		}
 
 
 		else if (direction[i] == IGATE_SERVER) {
-			clock_t start = clock();
-			printf("IGATE_SERVER ipid %d clock_t start %LF\n", ipid, (long double)start);
+			//clock_t start = clock();
+			//printf("IGATE_CLIENT ipid %d clock_t start %LF\n", ipid, (long double)start);
+
+			struct timeval timer_usec;
+			long long int timestamp_usec; /* timestamp in microsecond */
+			gettimeofday(&timer_usec, NULL);
+			timestamp_usec = ((long long int) timer_usec.tv_sec) * 1000000ll +
+						                        (long long int) timer_usec.tv_usec;
+			printf("IGATE_SERVER ipid %d, %lld microseconds since epoch\n", ipid, timestamp_usec);
+
 
 			pkt = snb_copy(batch->pkts[i]);
-			//if the direction is going to VNF
-			//add sequence number into table as tag 
-			//add batch->pkts[i] to table as data
-			//add the number of distributed vnf to table as count
-			// check for an existing entry
-		  	ind = find_matching_entry(priv,
-					    	  direction[i],
-					    	  ipid);
-
-			//printf("process batch, index: %d\n", ind);
-			// add entry if none exists
-			if (ind < 0)
-			{
-				ind = add_entry(priv,
-					    	ipid,
-						pkt,
-						count);
-				ogates[i] = OGATE_MIRROR2;
-			}
-			else {
+			//if (priv->entry[ipid].count > 0)
+			//ind = find_matching_entry(priv, ipid);
+			ind = add_matching_entry(priv, ipid, pkt, count);
+			if (ind == -1) {
 				printf("duplicated ipid\n");
 				ogates[i] = OGATE_DROP;
-				//continue;
+			}
+			else {
+				ogates[i] = OGATE_MIRROR2;
 			}
 		}
 
 		else if (direction[i] == IGATE_VM1A) {
-			clock_t start = clock();
-			printf("IGATE_VM1A ipid %d clock_t start %LF\n", ipid, (long double)start);  
+			//clock_t start = clock();
+			//printf("IGATE_VM1B ipid %d clock_t start %LF\n", ipid, (long double)start);
+
+			struct timeval timer_usec;
+			long long int timestamp_usec; /* timestamp in microsecond */
+			gettimeofday(&timer_usec, NULL);
+			timestamp_usec = ((long long int) timer_usec.tv_sec) * 1000000ll +
+						                        (long long int) timer_usec.tv_usec;
+			printf("IGATE_VM1A ipid %d, %lld microseconds since epoch\n", ipid, timestamp_usec);
+
+
+
 			pkt = snb_copy(batch->pkts[i]);
 			//the direction is going out (return packets from VNF)
 			//find corresponding entry in table by sequence number
@@ -495,73 +371,71 @@ static void yang_process_batch(struct module *m,
 			//count--
 			//if count = 0: replace the packet in batch and destroy the entry; set it as ready for sending out; send out
 			// check for an existing entry in priv->map
-		  	ind = find_matching_entry(priv,
-					    direction[i],
-					    ipid);	
-			
-			// if one exists, rewrite destination ip/port
-		 	if (ind >= 0) {
-		 		entry = &(priv->entry[ind]);
-				entry->count -= 1;
-				if ( entry->count == 0 ) {
 
-					//pkt = snb_copy(entry->pkt);
-					//snb_free(batch->pkts[i]);
-					//batch->pkts[i] = pkt;
-					//delete entry
-					delete_entry(priv, ind);
+			//if the item exists in the table
+			if (priv->entry[ipid].count > 0) {
+				entry = &(priv->entry[ipid]);
+				entry->count -= 1;
+				if (entry->count == 0) {
+					//clock_t start = clock();
+					//printf("IGATE_VM1B ipid %d clock_t start %LF\n", ipid, (long double)start);
+					delete_entry(priv, ipid);
 					ogates[i] = OGATE_CLIENT;	
 				}
 				else {
 					snb_free(entry->pkt);
-					entry->pkt = pkt;
+					entry->pkt = pkt;	
 					ogates[i] = OGATE_DROP;
 				}
-		 	}
+			}
+			//if the item does NOT exist in the table
 		 	else{
-		 		// packet should be deleted
-		 		//log_info("ENTRY NOT FOUND\n");
 				printf("ENTRY NOT FOUND\n");	
 				ogates[i] = OGATE_DROP;
-		 		//continue;
 		 	}
+
 		}
 
 		else if (direction[i] == IGATE_VM2A) {
-			clock_t start = clock();
-			printf("IGATE_VM2A ipid %d clock_t start %LF\n", ipid, (long double)start);  
+			//clock_t start = clock();
+			//printf("IGATE_VM2B ipid %d clock_t start %LF\n", ipid, (long double)start);
+
+
+			struct timeval timer_usec;
+			long long int timestamp_usec; /* timestamp in microsecond */
+			gettimeofday(&timer_usec, NULL);
+			timestamp_usec = ((long long int) timer_usec.tv_sec) * 1000000ll +
+						                        (long long int) timer_usec.tv_usec;
+			printf("IGATE_VM2A ipid %d, %lld microseconds since epoch\n", ipid, timestamp_usec);
+
+			
 			//the direction is going out (return packets from VNF)
 			//find corresponding entry in table by sequence number
 			//update (i.e. xor) packet with corresponding data in the table, (free the memory in batch later)
 			//count--
 			//if count = 0: replace the packet in batch and destroy the entry; set it as ready for sending out; send out
 			// check for an existing entry in priv->map
-		  	ind = find_matching_entry(priv,
-					    direction[i],
-					    ipid);	
-			
-			// if one exists, rewrite destination ip/port
-		 	if (ind >= 0) {
-		 		entry = &(priv->entry[ind]);
+
+			if (priv->entry[ipid].count > 0) {			
+		 		entry = &(priv->entry[ipid]);
 				entry->count -= 1;
 				if ( entry->count == 0 ) {
+					//clock_t start = clock();
+					//printf("IGATE_VM2B ipid %d clock_t start %LF\n", ipid, (long double)start);
 					pkt = snb_copy(entry->pkt);
 					snb_free(batch->pkts[i]);
 					batch->pkts[i] = pkt;
 					//delete entry
-					delete_entry(priv, ind);
-					ogates[i] = OGATE_CLIENT;						
+					delete_entry(priv, ipid);
+					ogates[i] = OGATE_CLIENT;
 				}
 				else {
 					ogates[i] = OGATE_DROP;
 				}
 		 	}
 		 	else{
-		 		// packet should be deleted
-		 		//log_info("ENTRY NOT FOUND\n");
 				printf("ENTRY NOT FOUND\n");	
 				ogates[i] = OGATE_DROP;
-		 		//continue;
 		 	}
 		}
 
