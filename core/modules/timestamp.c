@@ -27,39 +27,70 @@ timestamp_process_batch(struct module *m, struct pkt_batch *batch)
 
 		//printf("start3 ipid %d \n", ipid);
 		if (direction[i] == 0) {
-			clock_t start = clock();
-			printf("IGATE_CLIENT ipid %d clock_t start %LF\n", ipid, (long double)start);
+
+			struct timeval timer_usec;
+			long long int timestamp_usec; /* timestamp in microsecond */
+			gettimeofday(&timer_usec, NULL);
+			timestamp_usec = ((long long int) timer_usec.tv_sec) * 1000000ll +
+						                        (long long int) timer_usec.tv_usec;
+			printf("IGATE_CLIENT ipid %d, %lld microseconds since epoch\n", ipid, timestamp_usec);
+
 			ogates[i] = 0;
 		}
 
 		else if (direction[i] == 1) {
-			clock_t start = clock();
-			printf("IGATE_VM1B ipid %d clock_t start %LF\n", ipid, (long double)start);
+			struct timeval timer_usec;
+			long long int timestamp_usec; /* timestamp in microsecond */
+			gettimeofday(&timer_usec, NULL);
+			timestamp_usec = ((long long int) timer_usec.tv_sec) * 1000000ll +
+						                        (long long int) timer_usec.tv_usec;
+			printf("IGATE_VM1B ipid %d, %lld microseconds since epoch\n", ipid, timestamp_usec);
+			//printf("IGATE_VM1B ipid %d clock_t start %LF\n", ipid, (long double)start);
   			ogates[i] = 1;
 		}
 
 		else if (direction[i] == 2) {  
-			clock_t start = clock();
-			printf("IGATE_VM2B ipid %d clock_t start %LF\n", ipid, (long double)start);
+			struct timeval timer_usec;
+			long long int timestamp_usec; /* timestamp in microsecond */
+			gettimeofday(&timer_usec, NULL);
+			timestamp_usec = ((long long int) timer_usec.tv_sec) * 1000000ll +
+						                        (long long int) timer_usec.tv_usec;
+			printf("IGATE_VM2B ipid %d, %lld microseconds since epoch\n", ipid, timestamp_usec);
+			//printf("IGATE_VM2B ipid %d clock_t start %LF\n", ipid, (long double)start);
   			ogates[i] = 2;
 		}
 
 
 		else if (direction[i] == 3) {
-			clock_t start = clock();
-			printf("IGATE_SERVER ipid %d clock_t start %LF\n", ipid, (long double)start);
+			struct timeval timer_usec;
+			long long int timestamp_usec; /* timestamp in microsecond */
+			gettimeofday(&timer_usec, NULL);
+			timestamp_usec = ((long long int) timer_usec.tv_sec) * 1000000ll +
+						                        (long long int) timer_usec.tv_usec;
+			printf("IGATE_SERVER ipid %d, %lld microseconds since epoch\n", ipid, timestamp_usec);
+			//printf("IGATE_SERVER ipid %d clock_t start %LF\n", ipid, (long double)start);
   			ogates[i] = 3;
 		}
 
 		else if (direction[i] == 5) {  
-			clock_t start = clock();
-			printf("IGATE_VM1A ipid %d clock_t start %LF\n", ipid, (long double)start);
+			struct timeval timer_usec;
+			long long int timestamp_usec; /* timestamp in microsecond */
+			gettimeofday(&timer_usec, NULL);
+			timestamp_usec = ((long long int) timer_usec.tv_sec) * 1000000ll +
+						                        (long long int) timer_usec.tv_usec;
+			printf("IGATE_VM1A ipid %d, %lld microseconds since epoch\n", ipid, timestamp_usec);
+			//printf("IGATE_VM1A ipid %d clock_t start %LF\n", ipid, (long double)start);
   			ogates[i] = 5;
 		}
 
 		else if (direction[i] == 4) {  
-			clock_t start = clock();
-			printf("IGATE_VM2A ipid %d clock_t start %LF\n", ipid, (long double)start);
+			struct timeval timer_usec;
+			long long int timestamp_usec; /* timestamp in microsecond */
+			gettimeofday(&timer_usec, NULL);
+			timestamp_usec = ((long long int) timer_usec.tv_sec) * 1000000ll +
+						                        (long long int) timer_usec.tv_usec;
+			printf("IGATE_VM2A ipid %d, %lld microseconds since epoch\n", ipid, timestamp_usec);
+			//printf("IGATE_VM2A ipid %d clock_t start %LF\n", ipid, (long double)start);
   			ogates[i] = 4;
 		}
 	}
