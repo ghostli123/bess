@@ -3,7 +3,7 @@ APID=26133
 BPID=26191
 DSTPID=26240
 
-#BPID=100539 
+#BPID=100539
 
 S = VPort(container_pid=SRCPID,name='test_namespace_eth10',ifname='eth10',ip_addr='192.168.10.10/24',mac_addr='02:00:00:00:00:10')
 A1 = VPort(container_pid=APID,name='test_namespace_eth22',ifname='eth22',ip_addr='192.168.10.22/24',mac_addr='02:00:00:00:00:22')
