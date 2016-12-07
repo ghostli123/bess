@@ -1,0 +1,41 @@
+
+
+#A1 = VPort(container_pid=APID,name='test_namespace_eth22',ifname='eth22',ip_addr='10.0.1.1/24',mac_addr='02:00:00:00:00:22')
+#A2 = VPort(container_pid=APID,name='test_namespace_eth23',ifname='eth23',ip_addr='10.0.2.1/24',mac_addr='02:00:00:00:00:23')
+#B1 = VPort(container_pid=BPID,name='test_namespace_eth24',ifname='eth24',ip_addr='10.0.2.100/24',mac_addr='02:00:00:00:00:24')
+#B2 = VPort(container_pid=BPID,name='test_namespace_eth25',ifname='eth25',ip_addr='10.0.3/100/24',mac_addr='02:00:00:00:00:25')
+A1 = PMDPort(vdev='eth_vhost2,iface=/tmp/sock2,queues=1')
+A2 = PMDPort(vdev='eth_vhost3,iface=/tmp/sock3,queues=1')
+B1 = PMDPort(vdev='eth_vhost4,iface=/tmp/sock4,queues=1')
+B2 = PMDPort(vdev='eth_vhost5,iface=/tmp/sock5,queues=1')
+S = PMDPort(pci='41:00.0')
+D = PMDPort(pci='41:00.1')
+#
+Si = Si::PortInc(port=S)
+So = So::PortOut(port=S)
+Di = Di::PortInc(port=D)
+Do = Do::PortOut(port=D)
+A1o = A1o::PortOut(port=A1)
+A2i = A2i::PortInc(port=A2)
+B1o = B1o::PortOut(port=B1)
+B2i = B2i::PortInc(port=B2)
+
+B2o = B2o::PortOut(port=B2)
+A1i = A1i::PortInc(port=A1)
+A2o = A2o::PortOut(port=A2)
+B1i = B1i::PortInc(port=B1)
+
+
+Si -> B1o
+B2i -> Do
+Di -> B2o 
+B1i -> So
+
+##standard serial setup for timestamp
+#y::Timestamp(gates=6)
+#Si -> 0:y:0 -> A1o
+#A2i -> 1:y:1 -> B1o
+#B2i -> 2:y:2 -> Do
+#Di -> 3:y:3 -> B2o
+#B1i -> 4:y:4 -> A2o
+#A1i -> 5:y:5 -> So

@@ -1,0 +1,1 @@
+p0 = PMDPort(vdev='eth_vhost0,iface=/tmp/sock0,queues=1')

@@ -1,0 +1,47 @@
+SRCPID=5359
+APID=5417
+BPID=5474
+DSTPID=5530
+#BPID=100539 
+
+S = VPort(container_pid=SRCPID,name='test_namespace_eth10',ifname='eth10',ip_addr='192.168.10.10/24',mac_addr='02:00:00:00:00:10')
+A1 = VPort(container_pid=APID,name='test_namespace_eth22',ifname='eth22',ip_addr='192.168.10.22/24',mac_addr='02:00:00:00:00:22')
+A2 = VPort(container_pid=APID,name='test_namespace_eth23',ifname='eth23',ip_addr='192.168.10.23/24',mac_addr='02:00:00:00:00:23')
+B1 = VPort(container_pid=BPID,name='test_namespace_eth24',ifname='eth24',ip_addr='192.168.10.24/24',mac_addr='02:00:00:00:00:24')
+B2 = VPort(container_pid=BPID,name='test_namespace_eth25',ifname='eth25',ip_addr='192.168.10.25/24',mac_addr='02:00:00:00:00:25')
+D = VPort(container_pid=DSTPID,name='test_namespace_eth26',ifname='eth26',ip_addr='192.168.10.26/24',mac_addr='02:00:00:00:00:26')
+#S = PMDPort(pci='03:00.0')
+#D = PMDPort(pci='03:00.1')
+#
+Si = Si::PortInc(port=S)
+So = So::PortOut(port=S)
+Di = Di::PortInc(port=D)
+Do = Do::PortOut(port=D)
+A1o = A1o::PortOut(port=A1)
+A2i = A2i::PortInc(port=A2)
+B1o = B1o::PortOut(port=B1)
+B2i = B2i::PortInc(port=B2)
+
+B2o = B2o::PortOut(port=B2)
+A1i = A1i::PortInc(port=A1)
+A2o = A2o::PortOut(port=A2)
+B1i = B1i::PortInc(port=B1)
+
+#standard parallel setup
+y::YANG(gates=5)
+m1::Mirror(gates=2)
+m2::Mirror(gates=2)
+Si -> 0:y:0 -> m1
+m1:0 -> A1o
+m1:1 -> B1o
+A2i -> 1:y
+B2i -> 2:y
+y:1 -> Sink()
+y:2 -> Do
+Di -> 3:y:3 -> m2
+m2:0 -> A2o
+m2:1 -> B2o 
+A1i -> 4:y
+B1i -> 5:y
+y:4 -> So
+
